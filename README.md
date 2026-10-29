@@ -47,11 +47,9 @@ A Billetto API key-pair is required to import real events. Clerk credentials are
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
-cd test_assignment
-```
+git clone https://github.com/pankajd04/billetto-events-rails.git
 
-Replace `YOUR_GITHUB_REPOSITORY_URL` with the actual repository URL.
+```
 
 ### 2. Install dependencies
 
