@@ -1,0 +1,18 @@
+
+<div class="login-page">
+  <div class="login-card">
+    <h1>Session Expired</h1>
+
+    <p>
+      <%= flash[:alert] || "Your session has expired. Please sign in again to continue voting." %>
+    </p>
+
+    <%= link_to "Sign in with Clerk",
+                @clerk_sign_in_url,
+                class: "login-button" %>
+
+    <p class="login-footer">
+      After signing in, you will return to Upcoming Events.
+    </p>
+  </div>
+</div>

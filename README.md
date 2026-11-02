@@ -4,20 +4,24 @@
 
 A Ruby on Rails application that fetches public events from the Billetto API, stores event data in PostgreSQL, and allows authenticated users to upvote or downvote events.
 
-The application uses Clerk for authentication and Rails Event Store to publish vote-related domain events.
+The application uses Clerk for authentication, Arkency Command Bus to dispatch voting commands, and Rails Event Store to publish vote-related domain events.
 
 ## Features
 
 - Fetch and import events from the Billetto public API.
-- Store event details in the database.
+- Store event details in PostgreSQL.
 - Display event titles, descriptions, images, dates, and event links.
 - Authenticate users through Clerk.
 - Allow authenticated users to upvote and downvote events.
 - Store votes with the event ID, Clerk user ID, and vote direction.
 - Allow one current vote per user per event.
 - Update an existing vote when a user changes their vote direction.
-- Display upvote and downvote counts from saved vote records.
-- Publish `EventUpvoted` and `EventDownvoted` events through Rails Event Store.
+- Dispatch voting commands through Arkency Command Bus.
+- Process voting operations through a dedicated command handler.
+- Publish `EventUpvoted` and `EventDownvoted` domain events through Rails Event Store.
+- Update vote-count projections through an event subscriber.
+- Prevent duplicate event processing using processed event records.
+- Use database locking to handle concurrent voting operations.
 - Include automated tests using RSpec.
 
 ## Technology Stack
@@ -28,8 +32,9 @@ The application uses Clerk for authentication and Rails Event Store to publish v
 - RSpec
 - Clerk authentication
 - Rails Event Store
+- Arkency Command Bus
 - Billetto public Events API
-- dotenv-rails for local environment variables
+- `dotenv-rails` for local environment variables
 
 ## Prerequisites
 
@@ -48,7 +53,7 @@ A Billetto API key-pair is required to import real events. Clerk credentials are
 
 ```bash
 git clone https://github.com/pankajd04/billetto-events-rails.git
-
+cd billetto-events-rails
 ```
 
 ### 2. Install dependencies
@@ -103,11 +108,11 @@ Run:
 bin/rails db:seed
 ```
 
-The seed file creates demonstration events for testing the event listing, voting, and vote counts.
+The seed file creates three demonstration events for testing the event listing and voting flow.
 
 The sample events use demonstration URLs and are not real Billetto listings.
 
-Running the seed command again should not create duplicate sample events when the seed implementation uses `find_or_create_by!` with the sample external IDs.
+The seed implementation uses `Event.find_or_create_by!` with fixed sample external IDs, so running the seed command again does not create duplicate sample events. Existing sample records are not automatically updated if their seed attributes change.
 
 ## Fetch Real Events from Billetto
 
@@ -125,15 +130,13 @@ Use a valid key-pair with access to the Billetto API.
 
 ### 2. Run the importer
 
-From the project root, run:
+Use the importer command supported by the current implementation. For example, if `Billetto::Importer` defines a `call` method:
 
 ```bash
 bin/rails runner "Billetto::Importer.new.call"
 ```
 
-The importer is intended to fetch events from Billetto and persist them in the local database.
-
-This command should be verified against the current importer implementation before use. If the importer exposes a different method, use the method supported by the code.
+Verify the importer class and method in the project before running this command.
 
 ### 3. Verify the imported data
 
@@ -161,7 +164,7 @@ Configure the following variables:
 - `CLERK_SECRET_KEY`
 - `CLERK_SIGN_IN_URL`
 
-Authenticated voting should use the user ID obtained from the validated Clerk session on the server. Do not trust a user ID supplied by the browser.
+Voting requests require an authenticated Clerk session. The Clerk user ID is obtained from the server-side Clerk session rather than being accepted from a browser-supplied user ID.
 
 For local development, configure the Clerk application with the correct development domain and return URL.
 
@@ -175,7 +178,22 @@ Each vote belongs to an event and stores:
 
 A user can have only one current vote per event. Changing the vote direction updates the existing vote record.
 
-Upvote and downvote totals are calculated from persisted vote records. This allows the displayed totals to remain correct after a page refresh.
+The database has a unique index on `(event_id, clerk_user_id)` to enforce this rule.
+
+## Command Bus
+
+The application uses Arkency Command Bus to separate voting requests from the voting business logic.
+
+The voting flow is:
+
+1. `VotesController` receives the voting request.
+2. The controller creates a `CreateVote` command.
+3. The command is dispatched through the Command Bus.
+4. `CreateVoteHandler` processes the command.
+5. The handler validates the vote direction and updates the vote record.
+6. The handler publishes the appropriate domain event through Rails Event Store.
+
+This keeps the controller focused on handling the request and moves the voting operation into a dedicated handler.
 
 ## Rails Event Store
 
@@ -184,13 +202,41 @@ The application defines two domain event types:
 - `EventUpvoted`
 - `EventDownvoted`
 
-These events are published through Rails Event Store when a vote is recorded or its direction changes.
+These events are published through Rails Event Store when a vote is created or its direction changes. The event payload includes the event ID, Clerk user ID, previous direction, and new direction.
 
-In development, the event store browser is available at:
+The application registers the `EventVoteCountSubscriber` for both event types. It also registers the following Rails Event Store linking subscribers:
+
+- `LinkByEventType`
+- `LinkByCorrelationId`
+- `LinkByCausationId`
+
+In development, the event browser is available at:
 
 http://localhost:3000/res
 
-The event browser can be used to inspect published events and their payloads.
+## Vote Count Projection
+
+The application maintains an `EventVoteCount` table with upvote and downvote totals for each event.
+
+The `EventVoteCountSubscriber` updates these totals when voting domain events are published. When a user changes their vote direction, the subscriber decreases the previous direction count and increases the new direction count.
+
+The projection is maintained separately from the individual vote records. The event listing should use this projection if the goal is to display the precomputed totals without calculating counts from all vote records on each request.
+
+## Idempotency
+
+The application uses a `ProcessedEvent` table to track processed domain events.
+
+A unique database index on `event_id` prevents the same event from being processed more than once. The processed-event record and the vote-count projection update are performed within the same database transaction.
+
+This protects the projection from counting the same event more than once when the subscriber receives a duplicate delivery.
+
+## Concurrency Handling
+
+The `CreateVoteHandler` locks the event record while processing a vote using Active Record row-level locking.
+
+This serializes voting operations for the same event and helps prevent duplicate votes when concurrent requests are received through the handler.
+
+The votes table also has a unique database index on `(event_id, clerk_user_id)` as a database-level safeguard.
 
 ## Running Tests
 
@@ -200,15 +246,25 @@ Run the complete RSpec suite:
 bundle exec rspec
 ```
 
-The latest recorded test run completed with:
+Latest recorded test results:
 
-- 17 examples
+- 38 examples
 - 0 failures
-- 4 pending examples
+- 4 pending
 
-The tests cover Event model validations, Vote model validations, vote direction changes, and rejection of unauthenticated voting requests.
+The test suite covers:
 
-Pending specs should be reviewed and replaced with meaningful tests where appropriate.
+- Event and Vote model validations.
+- Vote creation and direction changes.
+- Command Bus dispatching from the voting controller.
+- Rails Event Store event publishing.
+- Vote rollback when event publishing fails.
+- Vote-count projection updates.
+- Duplicate event processing.
+- Concurrent voting operations.
+- Unauthenticated voting requests.
+
+The four pending examples are generated placeholder specs for helper and view files.
 
 ## Design Decisions
 
@@ -218,32 +274,39 @@ Billetto event data is stored locally so event listings can be displayed from th
 
 ### Vote persistence
 
-Votes are stored as database records rather than maintaining separate manually updated counters. This allows counts to be derived from the current saved vote direction.
+Votes are stored as database records rather than relying only on manually updated counters. This preserves the current vote direction for each user and event.
 
-### Domain events
+### Command handling
 
-Rails Event Store records vote-related events. Event payloads should contain enough information to understand vote transitions, including the previous and new directions when applicable.
+The controller dispatches a command, and a dedicated handler performs the voting operation. This separates HTTP request handling from business logic.
+
+### Domain events and projections
+
+Rails Event Store records vote-related domain events. A subscriber updates the `EventVoteCount` projection based on those events.
+
+### Transaction handling
+
+The vote update and event publication are performed within the handler's database transaction. The subscriber updates its processed-event record and projection within a transaction as well. This is a database-local design and should not be treated as a guarantee of atomicity across separate databases or external services.
 
 ### Local development
 
-Sample data provides a quick way to explore the application without requiring Billetto API credentials. Developers can optionally configure their own credentials to import real events.
+Sample data provides a way to explore the application without requiring Billetto API credentials. Developers can optionally configure their own credentials to import real events.
 
 ## Future Improvements
 
-- Add integration tests for authenticated voting.
-- Add automated tests for Rails Event Store publishing and vote transitions.
-- Add database-level unique constraints for event and user vote pairs.
-- Ensure vote persistence and event publishing remain consistent if either operation fails.
-- Add error handling and retry behavior for Billetto API failures.
-- Add automated tests for the event import workflow.
+- Add asynchronous processing for event subscribers.
+- Add retry and dead-letter handling for failed event processing.
+- Add automated tests for Billetto API failure scenarios.
 - Improve monitoring and logging for production deployments.
+- Evaluate finer-grained locking or other concurrency strategies for higher voting throughput.
+- Add performance tests for high-volume voting operations.
 
 ## Security
 
 - Never commit `.env` or real credentials to source control.
 - Use environment variables for API keys and secrets.
 - Keep Clerk authentication checks enabled for voting endpoints.
-- Derive the Clerk user ID from a validated server-side session.
+- Derive the Clerk user ID from the server-side Clerk session.
 - Do not expose secret keys in logs, screenshots, or public repositories.
 
 ## Notes

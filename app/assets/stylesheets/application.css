@@ -8,3 +8,213 @@
  *
  * Consider organizing styles into separate files for maintainability.
  */
+
+.events-page {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
+  font-family: Arial, sans-serif;
+  color: #263238;
+}
+
+.events-header {
+  margin-bottom: 30px;
+}
+
+.events-header h1 {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.events-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.event-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.event-image img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  display: block;
+}
+
+.event-content {
+  padding: 20px;
+}
+
+.event-content h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+.event-date {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.event-description {
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 44px;
+}
+
+.event-link {
+  display: inline-block;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  margin: 8px 0 18px;
+}
+
+.event-link:hover {
+  text-decoration: underline;
+}
+
+.vote-summary {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.vote-count {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+}
+
+.vote-count > span {
+  font-size: 24px;
+}
+
+.vote-count strong {
+  display: block;
+  font-size: 19px;
+}
+
+.vote-count small {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.vote-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.vote-actions form {
+  flex: 1;
+}
+
+.vote-button {
+  width: 100%;
+  padding: 11px 8px;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.vote-button:hover {
+  opacity: 0.85;
+}
+
+.upvote-button {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.downvote-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 480px) {
+  .events-page {
+    margin: 24px auto;
+    padding: 0 12px;
+  }
+
+  .events-header h1 {
+    font-size: 25px;
+  }
+
+  .vote-actions {
+    flex-direction: column;
+  }
+}
+
+.login-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 35px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+}
+
+.login-card h1 {
+  font-size: 25px;
+  margin-bottom: 15px;
+}
+
+.login-card p {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.login-button {
+  display: inline-block;
+  margin-top: 15px;
+  padding: 12px 25px;
+  color: white;
+  background: #2563eb;
+  border-radius: 7px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-footer {
+  margin-top: 20px;
+  font-size: 13px;
+}

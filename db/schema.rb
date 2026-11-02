@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_203605) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_180655) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_203605) do
     t.index ["stream", "position"], name: "index_event_store_events_in_streams_on_stream_and_position", unique: true
   end
 
+  create_table "event_vote_counts", force: :cascade do |t|
+    t.bigint "event_id", null: false
+    t.integer "upvotes_count", default: 0, null: false
+    t.integer "downvotes_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_event_vote_counts_on_event_id", unique: true
+  end
+
   create_table "events", force: :cascade do |t|
     t.string "external_id"
     t.string "title"
@@ -53,6 +62,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_203605) do
     t.string "state"
   end
 
+  create_table "processed_events", force: :cascade do |t|
+    t.string "event_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_processed_events_on_event_id", unique: true
+  end
+
   create_table "votes", force: :cascade do |t|
     t.bigint "event_id", null: false
     t.string "clerk_user_id"
@@ -64,5 +80,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_203605) do
   end
 
   add_foreign_key "event_store_events_in_streams", "event_store_events", column: "event_id", primary_key: "event_id"
+  add_foreign_key "event_vote_counts", "events"
   add_foreign_key "votes", "events"
 end

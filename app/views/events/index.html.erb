@@ -1,53 +1,77 @@
-<h1>Upcoming Events</h1>
 
-<div class="events-container">
-  <% @events.each do |event| %>
-    <div class="event-card">
+<div class="events-page">
+  <div class="events-header">
+    <h1>Upcoming Events</h1>
+    <p>Discover events and share your opinion by voting.</p>
+  </div>
 
-      <% if event.image_url.present? %>
-        <%= image_tag event.image_url,
-                      alt: event.title,
-                      width: 300 %>
-      <% end %>
+  <div class="events-grid">
+    <% @events.each do |event| %>
+      <div class="event-card">
 
-      <h2><%= event.title %></h2>
+        <% if event.image_url.present? %>
+          <div class="event-image">
+            <%= image_tag event.image_url, alt: event.title %>
+          </div>
+        <% end %>
 
-      <p>
-        <strong>Date:</strong>
-        <%= event.starts_at&.strftime("%d %B %Y, %I:%M %p") || "TBA" %>
-      </p>
+        <div class="event-content">
+          <h2><%= event.title %></h2>
 
-      <p><%= truncate(event.description, length: 200) %></p>
+          <p class="event-date">
+            <span>📅</span>
+            <%= event.starts_at&.strftime("%d %B %Y, %I:%M %p") || "Date to be announced" %>
+          </p>
 
-      <% if event.event_url.present? %>
-        <%= link_to "View Event", event.event_url,
-                    target: "_blank",
-                    rel: "noopener noreferrer" %>
-      <% end %>
+          <p class="event-description">
+            <%= truncate(event.description, length: 180) %>
+          </p>
 
-      
-      <p>
-        Upvotes: <%= event.votes.where(direction: "upvote").count %>
-        |
-        Downvotes: <%= event.votes.where(direction: "downvote").count %>
-      </p>
+          <% if event.event_url.present? %>
+            <%= link_to "View Event ↗",
+                        event.event_url,
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                        class: "event-link" %>
+          <% end %>
 
-      <%= form_with url: event_vote_path(event),
-              method: :post,
-              data: { turbo: false } do |form| %>
-        <%= form.hidden_field :direction, value: "upvote" %>
-        <%= form.submit "👍 Upvote" %>
-      <% end %>
+          <% counts = event.event_vote_count %>
 
+          <div class="vote-summary">
+            <div class="vote-count upvote-count">
+              <span>👍</span>
+              <div>
+                <strong><%= counts&.upvotes_count || 0 %></strong>
+                <small>Upvotes</small>
+              </div>
+            </div>
 
-      <%= form_with url: event_vote_path(event),
-              method: :post,
-              data: { turbo: false } do |form| %>
-        <%= form.hidden_field :direction, value: "downvote" %>
-        <%= form.submit "👎 Downvote" %>
-      <% end %>             
+            <div class="vote-count downvote-count">
+              <span>👎</span>
+              <div>
+                <strong><%= counts&.downvotes_count || 0 %></strong>
+                <small>Downvotes</small>
+              </div>
+            </div>
+          </div>
 
+          <div class="vote-actions">
+            <%= form_with url: event_vote_path(event),
+                          method: :post,
+                          data: { turbo: false } do |form| %>
+              <%= form.hidden_field :direction, value: "upvote" %>
+              <%= form.submit "👍 Upvote", class: "vote-button upvote-button" %>
+            <% end %>
 
-    </div>
-  <% end %>
+            <%= form_with url: event_vote_path(event),
+                          method: :post,
+                          data: { turbo: false } do |form| %>
+              <%= form.hidden_field :direction, value: "downvote" %>
+              <%= form.submit "👎 Downvote", class: "vote-button downvote-button" %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
 </div>
