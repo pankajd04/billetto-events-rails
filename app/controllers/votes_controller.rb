@@ -2,6 +2,10 @@
 class VotesController < ApplicationController
   before_action :require_clerk_session!
 
+  # Reverification preset is set to `LAX`
+  # before_action :require_reverification!, only: :destroy, preset: Clerk::StepUp::Preset::LAX
+
+
   def create
     command = CreateVote.new(
       event_id: params[:event_id],
@@ -56,6 +60,7 @@ class VotesController < ApplicationController
     Rails.logger.info "Session: #{clerk.session.inspect}"
     Rails.logger.info "User ID: #{clerk.user_id.inspect}"
     Rails.logger.info "Cookies: #{request.cookies.keys.inspect}"
+    Rails.logger.info "AUTH REASON: #{request.headers['X-Clerk-Auth-Reason']}"
     Rails.logger.info "======================="
 
     return if clerk.session && clerk.user_id.present?

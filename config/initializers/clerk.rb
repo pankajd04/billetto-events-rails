@@ -4,5 +4,4 @@ Clerk.configure do |config|
 
   config.debug = true
   config.logger = Logger.new(STDOUT)
-  config.excluded_routes = ["/events/*/vote"]
 end

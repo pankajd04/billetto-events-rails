@@ -1,18 +1,31 @@
-
+ 
 <div class="login-page">
   <div class="login-card">
-    <h1>Session Expired</h1>
+    <h1>Sign in</h1>
 
-    <p>
-      <%= flash[:alert] || "Your session has expired. Please sign in again to continue voting." %>
-    </p>
+    <p>Please sign in to continue voting.</p>
 
-    <%= link_to "Sign in with Clerk",
-                @clerk_sign_in_url,
-                class: "login-button" %>
-
-    <p class="login-footer">
-      After signing in, you will return to Upcoming Events.
-    </p>
+    <button
+      type="button"
+      class="login-button"
+      onclick="window.Clerk.redirectToSignIn({
+        returnBackUrl: 'http://localhost:3000/'
+      });">
+      Sign in with Clerk
+    </button>
   </div>
 </div>
+
+<script>
+  window.addEventListener("load", async function () {
+    try {
+      await window.Clerk.load();
+
+      if (window.Clerk.session?.status === "active") {
+        window.location.replace("http://localhost:3000/");
+      }
+    } catch (error) {
+      console.error("Clerk redirect error:", error);
+    }
+  });
+</script>
